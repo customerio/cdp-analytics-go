@@ -4,8 +4,6 @@ import "time"
 
 var _ Message = (*Screen)(nil)
 
-// This type represents object sent in a screen call as described in
-// https://segment.com/docs/libraries/http/#screen
 type Screen struct {
 	// This field is exported for serialization purposes and shouldn't be set by
 	// the application, its value is always overwritten by the library.

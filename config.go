@@ -82,7 +82,7 @@ type Config struct {
 
 // This constant sets the default endpoint to which client instances send
 // messages if none was explictly set.
-const DefaultEndpoint = "https://api.segment.io"
+const DefaultEndpoint = "https://cdp.customer.io"
 
 // This constant sets the default flush interval used by client instances if
 // none was explicitly set.
@@ -160,7 +160,7 @@ func makeConfig(c Config) Config {
 	// We always overwrite the 'library' field of the default context set on the
 	// client because we want this information to be accurate.
 	c.DefaultContext.Library = LibraryInfo{
-		Name:    "analytics-go",
+		Name:    "cdp-analytics-go",
 		Version: Version,
 	}
 	return c

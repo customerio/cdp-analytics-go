@@ -4,7 +4,7 @@
       "event": "Download",
       "messageId": "abc",
       "properties": {
-        "application": "Segment Desktop",
+        "application": "MyApp",
         "platform": "osx",
         "version": "1.1.0"
       },
@@ -15,8 +15,8 @@
   ],
   "context": {
     "library": {
-      "name": "analytics-go",
-      "version": "3.0.0"
+      "name": "cdp-analytics-go",
+      "version": "0.0.1"
     }
   },
   "messageId": "I'm unique",

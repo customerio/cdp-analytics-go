@@ -189,7 +189,7 @@ func ExampleTrack() {
 		Event:  "Download",
 		UserId: "123456",
 		Properties: Properties{
-			"application": "Segment Desktop",
+			"application": "MyApp",
 			"version":     "1.1.0",
 			"platform":    "osx",
 		},
@@ -203,7 +203,7 @@ func ExampleTrack() {
 	//       "event": "Download",
 	//       "messageId": "I'm unique",
 	//       "properties": {
-	//         "application": "Segment Desktop",
+	//         "application": "MyApp",
 	//         "platform": "osx",
 	//         "version": "1.1.0"
 	//       },
@@ -214,8 +214,8 @@ func ExampleTrack() {
 	//   ],
 	//   "context": {
 	//     "library": {
-	//       "name": "analytics-go",
-	//       "version": "3.0.0"
+	//       "name": "cdp-analytics-go",
+	//       "version": "0.0.1"
 	//     }
 	//   },
 	//   "messageId": "I'm unique",
@@ -259,7 +259,7 @@ func TestEnqueue(t *testing.T) {
 				Event:  "Download",
 				UserId: "123456",
 				Properties: Properties{
-					"application": "Segment Desktop",
+					"application": "MyApp",
 					"version":     "1.1.0",
 					"platform":    "osx",
 				},
@@ -296,7 +296,7 @@ func TestEnqueue(t *testing.T) {
 				Event:  "Download",
 				UserId: "123456",
 				Properties: Properties{
-					"application": "Segment Desktop",
+					"application": "MyApp",
 					"version":     "1.1.0",
 					"platform":    "osx",
 				},
@@ -370,7 +370,7 @@ func TestTrackWithInterval(t *testing.T) {
 		Event:  "Download",
 		UserId: "123456",
 		Properties: Properties{
-			"application": "Segment Desktop",
+			"application": "MyApp",
 			"version":     "1.1.0",
 			"platform":    "osx",
 		},
@@ -406,7 +406,7 @@ func TestTrackWithTimestamp(t *testing.T) {
 		Event:  "Download",
 		UserId: "123456",
 		Properties: Properties{
-			"application": "Segment Desktop",
+			"application": "MyApp",
 			"version":     "1.1.0",
 			"platform":    "osx",
 		},
@@ -438,7 +438,7 @@ func TestTrackWithMessageId(t *testing.T) {
 		Event:  "Download",
 		UserId: "123456",
 		Properties: Properties{
-			"application": "Segment Desktop",
+			"application": "MyApp",
 			"version":     "1.1.0",
 			"platform":    "osx",
 		},
@@ -470,7 +470,7 @@ func TestTrackWithContext(t *testing.T) {
 		Event:  "Download",
 		UserId: "123456",
 		Properties: Properties{
-			"application": "Segment Desktop",
+			"application": "MyApp",
 			"version":     "1.1.0",
 			"platform":    "osx",
 		},
@@ -507,7 +507,7 @@ func TestTrackMany(t *testing.T) {
 			Event:  "Download",
 			UserId: "123456",
 			Properties: Properties{
-				"application": "Segment Desktop",
+				"application": "MyApp",
 				"version":     i,
 			},
 		})
@@ -538,7 +538,7 @@ func TestTrackWithIntegrations(t *testing.T) {
 		Event:  "Download",
 		UserId: "123456",
 		Properties: Properties{
-			"application": "Segment Desktop",
+			"application": "MyApp",
 			"version":     "1.1.0",
 			"platform":    "osx",
 		},

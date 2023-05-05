@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/segmentio/analytics-go/v3"
+	analytics "github.com/customerio/cdp-analytics-go"
 	"github.com/segmentio/conf"
 )
 
 func main() {
 	var config struct {
-		WriteKey   string `conf:"writeKey"   help:"The Segment Write Key of the project to send data to"`
+		WriteKey   string `conf:"writeKey"   help:"The Write Key of the project to send data to"`
 		Type       string `conf:"type"       help:"The type of the message to send"`
 		UserID     string `conf:"userId"     help:"Unique identifier for the user"`
 		GroupID    string `conf:"groupId"    help:"Unique identifier for the group"`
