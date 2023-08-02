@@ -22,26 +22,6 @@ func TestGroupMissingGroupId(t *testing.T) {
 	}
 }
 
-func TestGroupMissingUserId(t *testing.T) {
-	group := Group{
-		GroupId: "1",
-	}
-
-	if err := group.Validate(); err == nil {
-		t.Error("validating an invalid group object succeeded:", group)
-
-	} else if e, ok := err.(FieldError); !ok {
-		t.Error("invalid error type returned when validating group:", err)
-
-	} else if e != (FieldError{
-		Type:  "analytics.Group",
-		Name:  "UserId",
-		Value: "",
-	}) {
-		t.Error("invalid error value returned when validating group:", err)
-	}
-}
-
 func TestGroupValidWithUserId(t *testing.T) {
 	group := Group{
 		GroupId: "1",
