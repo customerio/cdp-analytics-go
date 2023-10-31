@@ -30,3 +30,28 @@ func main() {
     client.Close()
 }
 ```
+
+## Other Regions
+
+If you're using a [different data center](https://customer.io/docs/accounts-and-workspaces/data-centers/) such as our EU region, you can specify an alternate endpoint:
+
+```go
+package main
+
+import (
+    "os"
+
+    "github.com/customerio/cdp-analytics-go"
+)
+
+func main() {
+    client, err := analytics.NewWithConfig(os.Getenv("WRITE_KEY"), analytics.Config{
+        Endpoint: "https://cdp-eu.customer.io",
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    // ...
+}
+```
