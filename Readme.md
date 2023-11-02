@@ -55,3 +55,11 @@ func main() {
     // ...
 }
 ```
+
+## Documentation
+
+The links below contain more detailed documentation on how to use this library:
+
+* [Documentation](https://customer.io/docs/cdp/sources/connections/servers/go/)
+* [Specs](https://customer.io/docs/cdp/sources/source-spec/source-events/)
+* [godoc](https://pkg.go.dev/github.com/customerio/cdp-analytics-go)
