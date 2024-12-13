@@ -8,6 +8,7 @@ import (
 
 func TestTraitsSimple(t *testing.T) {
 	date := time.Now()
+	dateInUnix := date.Unix()
 	text := "ABC"
 	number := 42
 
@@ -19,7 +20,7 @@ func TestTraitsSimple(t *testing.T) {
 		"age":         {Traits{"age": number}, func(t Traits) { t.SetAge(number) }},
 		"avatar":      {Traits{"avatar": text}, func(t Traits) { t.SetAvatar(text) }},
 		"birthday":    {Traits{"birthday": date}, func(t Traits) { t.SetBirthday(date) }},
-		"createdAt":   {Traits{"createdAt": date}, func(t Traits) { t.SetCreatedAt(date) }},
+		"createdAt":   {Traits{"createdAt": dateInUnix}, func(t Traits) { t.SetCreatedAt(date) }},
 		"description": {Traits{"description": text}, func(t Traits) { t.SetDescription(text) }},
 		"email":       {Traits{"email": text}, func(t Traits) { t.SetEmail(text) }},
 		"firstName":   {Traits{"firstName": text}, func(t Traits) { t.SetFirstName(text) }},
