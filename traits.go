@@ -25,7 +25,7 @@ func (t Traits) SetBirthday(date time.Time) Traits {
 }
 
 func (t Traits) SetCreatedAt(date time.Time) Traits {
-	return t.Set("createdAt", date)
+	return t.Set("createdAt", date.Unix())
 }
 
 func (t Traits) SetDescription(desc string) Traits {
