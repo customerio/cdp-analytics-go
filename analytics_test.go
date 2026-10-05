@@ -841,3 +841,69 @@ func TestClientMaxConcurrentRequests(t *testing.T) {
 		t.Errorf("invalid error returned by erroring response body: %T: %s", err, err)
 	}
 }
+
+// Sends one message with the given key and config and returns the request the
+// client made.
+func captureRequest(t *testing.T, key string, config Config) *http.Request {
+	reqchan := make(chan *http.Request, 1)
+
+	config.Logger = testLogger{t.Logf, t.Logf}
+	config.Transport = roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		reqchan <- r
+		return testTransportOK.RoundTrip(r)
+	})
+
+	client, _ := NewWithConfig(key, config)
+	client.Enqueue(Track{UserId: "A", Event: "B"})
+	client.Close()
+
+	return <-reqchan
+}
+
+func TestClientSecretKeyUsesBearer(t *testing.T) {
+	key := "ak_us_0123456789abcdefghijABCDEFGHIJ01_abcdef"
+	r := captureRequest(t, key, Config{})
+
+	if auth := r.Header.Get("Authorization"); auth != "Bearer "+key {
+		t.Errorf("invalid Authorization header: %q", auth)
+	}
+}
+
+func TestClientPublicKeyUsesBearer(t *testing.T) {
+	key := "wk_us_0123456789abcdefghijABCDEFGHIJ01_abcdef"
+	r := captureRequest(t, key, Config{})
+
+	if auth := r.Header.Get("Authorization"); auth != "Bearer "+key {
+		t.Errorf("invalid Authorization header: %q", auth)
+	}
+}
+
+func TestClientLegacyKeyUsesBasicAuth(t *testing.T) {
+	r := captureRequest(t, "0123456789", Config{})
+
+	if user, pass, ok := r.BasicAuth(); !ok || user != "0123456789" || pass != "" {
+		t.Errorf("invalid basic auth: %q %q %v", user, pass, ok)
+	}
+
+	if r.URL.String() != DefaultEndpoint+"/v1/batch" {
+		t.Errorf("invalid endpoint: %s", r.URL)
+	}
+}
+
+func TestClientEUKeyUsesEUEndpoint(t *testing.T) {
+	r := captureRequest(t, "ak_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", Config{})
+
+	if r.URL.String() != euEndpoint+"/v1/batch" {
+		t.Errorf("invalid endpoint: %s", r.URL)
+	}
+}
+
+func TestClientExplicitEndpointWinsOverKey(t *testing.T) {
+	r := captureRequest(t, "ak_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", Config{
+		Endpoint: "https://example.com",
+	})
+
+	if r.URL.String() != "https://example.com/v1/batch" {
+		t.Errorf("invalid endpoint: %s", r.URL)
+	}
+}

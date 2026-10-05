@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"regexp"
 	"strconv"
 	"sync"
 
@@ -80,6 +81,10 @@ func NewWithConfig(writeKey string, config Config) (cli Client, err error) {
 		return
 	}
 
+	if len(config.Endpoint) == 0 && keyDataCenter(writeKey) == "eu" {
+		config.Endpoint = euEndpoint
+	}
+
 	c := &client{
 		Config:   makeConfig(config),
 		key:      writeKey,
@@ -93,6 +98,18 @@ func NewWithConfig(writeKey string, config Config) (cli Client, err error) {
 
 	cli = c
 	return
+}
+
+// Matches the prefix of the new API keys, e.g. ak_us_... or wk_eu_...
+var prefixedKey = regexp.MustCompile(`^(ak|wk)_(us|eu)_`)
+
+// Returns the data center ("us" or "eu") of a prefixed API key, or an empty
+// string for a legacy write key.
+func keyDataCenter(key string) string {
+	if m := prefixedKey.FindStringSubmatch(key); m != nil {
+		return m[2]
+	}
+	return ""
 }
 
 func makeHttpClient(transport http.RoundTripper) http.Client {
@@ -292,7 +309,11 @@ func (c *client) upload(b []byte) error {
 	req.Header.Add("User-Agent", "analytics-go (version: "+Version+")")
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Content-Length", strconv.Itoa(len(b)))
-	req.SetBasicAuth(c.key, "")
+	if keyDataCenter(c.key) != "" {
+		req.Header.Set("Authorization", "Bearer "+c.key)
+	} else {
+		req.SetBasicAuth(c.key, "")
+	}
 
 	res, err := c.http.Do(req)
 

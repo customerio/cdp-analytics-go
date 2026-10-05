@@ -84,6 +84,10 @@ type Config struct {
 // messages if none was explictly set.
 const DefaultEndpoint = "https://cdp.customer.io"
 
+// The endpoint used when no endpoint was explicitly set and the API key
+// belongs to the EU data center (ak_eu_... or wk_eu_...).
+const euEndpoint = "https://cdp-eu.customer.io"
+
 // This constant sets the default flush interval used by client instances if
 // none was explicitly set.
 const DefaultInterval = 5 * time.Second
