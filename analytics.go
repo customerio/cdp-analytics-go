@@ -100,14 +100,14 @@ func NewWithConfig(writeKey string, config Config) (cli Client, err error) {
 	return
 }
 
-// Matches the prefix of the new API keys, e.g. ak_us_... or wk_eu_...
-var prefixedKey = regexp.MustCompile(`^(ak|wk)_(us|eu)_`)
+// Matches the prefix of the new API keys, e.g. sk_us_... or pk_eu_...
+var prefixedKey = regexp.MustCompile(`^[a-z]{2}_(us|eu)_`)
 
 // Returns the data center ("us" or "eu") of a prefixed API key, or an empty
 // string for a legacy write key.
 func keyDataCenter(key string) string {
 	if m := prefixedKey.FindStringSubmatch(key); m != nil {
-		return m[2]
+		return m[1]
 	}
 	return ""
 }

@@ -861,7 +861,7 @@ func captureRequest(t *testing.T, key string, config Config) *http.Request {
 }
 
 func TestClientSecretKeyUsesBearer(t *testing.T) {
-	key := "ak_us_0123456789abcdefghijABCDEFGHIJ01_abcdef"
+	key := "sk_us_0123456789abcdefghijABCDEFGHIJ01_abcdef"
 	r := captureRequest(t, key, Config{})
 
 	if auth := r.Header.Get("Authorization"); auth != "Bearer "+key {
@@ -870,7 +870,7 @@ func TestClientSecretKeyUsesBearer(t *testing.T) {
 }
 
 func TestClientPublicKeyUsesBearer(t *testing.T) {
-	key := "wk_us_0123456789abcdefghijABCDEFGHIJ01_abcdef"
+	key := "pk_us_0123456789abcdefghijABCDEFGHIJ01_abcdef"
 	r := captureRequest(t, key, Config{})
 
 	if auth := r.Header.Get("Authorization"); auth != "Bearer "+key {
@@ -891,7 +891,7 @@ func TestClientLegacyKeyUsesBasicAuth(t *testing.T) {
 }
 
 func TestClientEUKeyUsesEUEndpoint(t *testing.T) {
-	r := captureRequest(t, "ak_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", Config{})
+	r := captureRequest(t, "sk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", Config{})
 
 	if r.URL.String() != euEndpoint+"/v1/batch" {
 		t.Errorf("invalid endpoint: %s", r.URL)
@@ -899,7 +899,7 @@ func TestClientEUKeyUsesEUEndpoint(t *testing.T) {
 }
 
 func TestClientExplicitEndpointWinsOverKey(t *testing.T) {
-	r := captureRequest(t, "ak_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", Config{
+	r := captureRequest(t, "sk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", Config{
 		Endpoint: "https://example.com",
 	})
 
