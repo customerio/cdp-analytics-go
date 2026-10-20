@@ -78,6 +78,10 @@ func New(writeKey string) Client {
 // values (like a negative flush interval for example).
 // When the function returns an error the returned client will always be nil.
 func NewWithConfig(writeKey string, config Config) (cli Client, err error) {
+	// Keys read from secret files often end in a newline, which net/http
+	// refuses in a header and which would hide the key's prefix.
+	writeKey = strings.TrimSpace(writeKey)
+
 	if err = config.validate(); err != nil {
 		return
 	}
@@ -104,13 +108,13 @@ func NewWithConfig(writeKey string, config Config) (cli Client, err error) {
 }
 
 // Matches the prefix of the new API keys, e.g. sk_us_... or pk_eu_...
-var prefixedKey = regexp.MustCompile(`^[a-z]{2}_(us|eu)_`)
+var prefixedKey = regexp.MustCompile(`^(pk|sk)_(us|eu)_`)
 
 // Returns the data center ("us" or "eu") of a prefixed API key, or an empty
 // string for a legacy write key.
 func keyDataCenter(key string) string {
 	if m := prefixedKey.FindStringSubmatch(key); m != nil {
-		return m[1]
+		return m[2]
 	}
 	return ""
 }
