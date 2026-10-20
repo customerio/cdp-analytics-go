@@ -847,13 +847,18 @@ func TestClientMaxConcurrentRequests(t *testing.T) {
 func captureRequest(t *testing.T, key string, config Config) *http.Request {
 	reqchan := make(chan *http.Request, 1)
 
-	config.Logger = testLogger{t.Logf, t.Logf}
+	if config.Logger == nil {
+		config.Logger = testLogger{t.Logf, t.Logf}
+	}
 	config.Transport = roundTripperFunc(func(r *http.Request) (*http.Response, error) {
 		reqchan <- r
 		return testTransportOK.RoundTrip(r)
 	})
 
-	client, _ := NewWithConfig(key, config)
+	client, err := NewWithConfig(key, config)
+	if err != nil {
+		t.Fatal(err)
+	}
 	client.Enqueue(Track{UserId: "A", Event: "B"})
 	client.Close()
 
@@ -905,5 +910,43 @@ func TestClientExplicitEndpointWinsOverKey(t *testing.T) {
 
 	if r.URL.String() != "https://example.com/v1/batch" {
 		t.Errorf("invalid endpoint: %s", r.URL)
+	}
+}
+
+func TestClientWarnsOnRegionMismatch(t *testing.T) {
+	tests := []struct {
+		name     string
+		key      string
+		endpoint string
+		warn     bool
+	}{
+		{"eu key on us endpoint", "sk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", DefaultEndpoint, true},
+		{"eu key on us endpoint with slash", "pk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", DefaultEndpoint + "/", true},
+		{"us key on eu endpoint", "sk_us_0123456789abcdefghijABCDEFGHIJ01_abcdef", euEndpoint, true},
+		{"eu key on eu endpoint", "sk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", euEndpoint, false},
+		{"eu key on default", "sk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", "", false},
+		{"eu key on proxy", "sk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", "https://example.com", false},
+		{"legacy key on eu endpoint", "0123456789", euEndpoint, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var errs []string
+			logger := testLogger{t.Logf, func(format string, args ...interface{}) {
+				errs = append(errs, fmt.Sprintf(format, args...))
+			}}
+
+			captureRequest(t, test.key, Config{Endpoint: test.endpoint, Logger: logger})
+
+			warned := false
+			for _, e := range errs {
+				if strings.HasPrefix(e, "warning - endpoint") {
+					warned = true
+				}
+			}
+			if warned != test.warn {
+				t.Errorf("expected warning %v, got errors %q", test.warn, errs)
+			}
+		})
 	}
 }

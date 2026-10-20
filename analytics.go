@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 
 	"bytes"
@@ -94,6 +95,8 @@ func NewWithConfig(writeKey string, config Config) (cli Client, err error) {
 		http:     makeHttpClient(config.Transport),
 	}
 
+	c.warnOnRegionMismatch()
+
 	go c.loop()
 
 	cli = c
@@ -110,6 +113,17 @@ func keyDataCenter(key string) string {
 		return m[1]
 	}
 	return ""
+}
+
+// Explicit endpoints still win so proxies keep working, but sending a key to
+// the other region's Customer.io host gets a 200 while every event is dropped,
+// so it is worth a loud log line.
+func (c *client) warnOnRegionMismatch() {
+	endpoint := strings.TrimRight(c.Endpoint, "/")
+	dc := keyDataCenter(c.key)
+	if (dc == "eu" && endpoint == DefaultEndpoint) || (dc == "us" && endpoint == euEndpoint) {
+		c.errorf("warning - endpoint %s is not in the %s region of the API key, events will be dropped", c.Endpoint, dc)
+	}
 }
 
 func makeHttpClient(transport http.RoundTripper) http.Client {
