@@ -841,3 +841,152 @@ func TestClientMaxConcurrentRequests(t *testing.T) {
 		t.Errorf("invalid error returned by erroring response body: %T: %s", err, err)
 	}
 }
+
+// Sends one message with the given key and config and returns the request the
+// client made.
+func captureRequest(t *testing.T, key string, config Config) *http.Request {
+	reqchan := make(chan *http.Request, 1)
+
+	if config.Logger == nil {
+		config.Logger = testLogger{t.Logf, t.Logf}
+	}
+	config.Transport = roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		reqchan <- r
+		return testTransportOK.RoundTrip(r)
+	})
+
+	client, err := NewWithConfig(key, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.Enqueue(Track{UserId: "A", Event: "B"})
+	client.Close()
+
+	return <-reqchan
+}
+
+func TestClientSecretKeyUsesBearer(t *testing.T) {
+	key := "sk_us_0123456789abcdefghijABCDEFGHIJ01_abcdef"
+	r := captureRequest(t, key, Config{})
+
+	if auth := r.Header.Get("Authorization"); auth != "Bearer "+key {
+		t.Errorf("invalid Authorization header: %q", auth)
+	}
+}
+
+func TestClientPublicKeyUsesBearer(t *testing.T) {
+	key := "pk_us_0123456789abcdefghijABCDEFGHIJ01_abcdef"
+	r := captureRequest(t, key, Config{})
+
+	if auth := r.Header.Get("Authorization"); auth != "Bearer "+key {
+		t.Errorf("invalid Authorization header: %q", auth)
+	}
+}
+
+func TestClientLegacyKeyUsesBasicAuth(t *testing.T) {
+	r := captureRequest(t, "0123456789", Config{})
+
+	if user, pass, ok := r.BasicAuth(); !ok || user != "0123456789" || pass != "" {
+		t.Errorf("invalid basic auth: %q %q %v", user, pass, ok)
+	}
+
+	if r.URL.String() != DefaultEndpoint+"/v1/batch" {
+		t.Errorf("invalid endpoint: %s", r.URL)
+	}
+}
+
+func TestClientUnknownPrefixUsesBasicAuth(t *testing.T) {
+	key := "xx_us_0123456789abcdefghijABCDEFGHIJ01_abcdef"
+	r := captureRequest(t, key, Config{})
+
+	if user, pass, ok := r.BasicAuth(); !ok || user != key || pass != "" {
+		t.Errorf("invalid basic auth: %q %q %v", user, pass, ok)
+	}
+
+	if r.URL.String() != DefaultEndpoint+"/v1/batch" {
+		t.Errorf("invalid endpoint: %s", r.URL)
+	}
+}
+
+func TestClientTrimsKey(t *testing.T) {
+	key := "sk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef"
+	tests := []struct {
+		name string
+		key  string
+	}{
+		{"trailing newline", key + "\n"},
+		{"leading space", " " + key},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			r := captureRequest(t, test.key, Config{})
+
+			if auth := r.Header.Get("Authorization"); auth != "Bearer "+key {
+				t.Errorf("invalid Authorization header: %q", auth)
+			}
+
+			if r.URL.String() != euEndpoint+"/v1/batch" {
+				t.Errorf("invalid endpoint: %s", r.URL)
+			}
+		})
+	}
+}
+
+func TestClientEUKeyUsesEUEndpoint(t *testing.T) {
+	r := captureRequest(t, "sk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", Config{})
+
+	if r.URL.String() != euEndpoint+"/v1/batch" {
+		t.Errorf("invalid endpoint: %s", r.URL)
+	}
+}
+
+func TestClientExplicitEndpointWinsOverKey(t *testing.T) {
+	r := captureRequest(t, "sk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", Config{
+		Endpoint: "https://example.com",
+	})
+
+	if r.URL.String() != "https://example.com/v1/batch" {
+		t.Errorf("invalid endpoint: %s", r.URL)
+	}
+}
+
+func TestClientWarnsOnRegionMismatch(t *testing.T) {
+	tests := []struct {
+		name     string
+		key      string
+		endpoint string
+		warn     bool
+	}{
+		{"eu key on us endpoint", "sk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", DefaultEndpoint, true},
+		{"eu key on us endpoint with slash", "pk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", DefaultEndpoint + "/", true},
+		{"us key on eu endpoint", "sk_us_0123456789abcdefghijABCDEFGHIJ01_abcdef", euEndpoint, true},
+		{"eu key on eu endpoint", "sk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", euEndpoint, false},
+		{"eu key on default", "sk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", "", false},
+		{"eu key on proxy", "sk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef", "https://example.com", false},
+		{"legacy key on eu endpoint", "0123456789", euEndpoint, false},
+		{"padded eu key on us endpoint", " sk_eu_0123456789abcdefghijABCDEFGHIJ01_abcdef\n", DefaultEndpoint, true},
+		{"unknown prefix on eu endpoint", "xx_us_0123456789abcdefghijABCDEFGHIJ01_abcdef", euEndpoint, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var errs []string
+			logger := testLogger{t.Logf, func(format string, args ...interface{}) {
+				errs = append(errs, fmt.Sprintf(format, args...))
+			}}
+
+			captureRequest(t, test.key, Config{Endpoint: test.endpoint, Logger: logger})
+
+			warned := false
+			for _, e := range errs {
+				if strings.HasPrefix(e, "warning - endpoint") {
+					warned = true
+				}
+			}
+			if warned != test.warn {
+				t.Errorf("expected warning %v, got errors %q", test.warn, errs)
+			}
+		})
+	}
+}

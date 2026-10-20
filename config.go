@@ -15,8 +15,9 @@ import (
 // default value defined by the library.
 type Config struct {
 
-	// The endpoint to which the client connect and send their messages, set to
-	// `DefaultEndpoint` by default.
+	// The endpoint to which the client connect and send their messages. By
+	// default it is the EU endpoint for API keys with `_eu_` (such as
+	// `sk_eu_...`) and `DefaultEndpoint` otherwise.
 	Endpoint string
 
 	// The flushing interval of the client. Messages will be sent when they've
@@ -83,6 +84,10 @@ type Config struct {
 // This constant sets the default endpoint to which client instances send
 // messages if none was explictly set.
 const DefaultEndpoint = "https://cdp.customer.io"
+
+// The endpoint used when no endpoint was explicitly set and the API key
+// belongs to the EU data center (sk_eu_... or pk_eu_...).
+const euEndpoint = "https://cdp-eu.customer.io"
 
 // This constant sets the default flush interval used by client instances if
 // none was explicitly set.

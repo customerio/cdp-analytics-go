@@ -35,6 +35,8 @@ func main() {
 
 If you're using a [different data center](https://customer.io/docs/accounts-and-workspaces/data-centers/) such as our EU region, you can specify an alternate endpoint:
 
+API keys with `_eu_` in their prefix (such as `sk_eu_...` or `pk_eu_...`) default to the EU endpoint, so they don't need this. Other keys default to `DefaultEndpoint`.
+
 ```go
 package main
 

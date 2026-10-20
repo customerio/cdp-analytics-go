@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 
 	"bytes"
@@ -76,8 +78,16 @@ func New(writeKey string) Client {
 // values (like a negative flush interval for example).
 // When the function returns an error the returned client will always be nil.
 func NewWithConfig(writeKey string, config Config) (cli Client, err error) {
+	// Keys read from secret files often end in a newline, which net/http
+	// refuses in a header and which would hide the key's prefix.
+	writeKey = strings.TrimSpace(writeKey)
+
 	if err = config.validate(); err != nil {
 		return
+	}
+
+	if len(config.Endpoint) == 0 && keyDataCenter(writeKey) == "eu" {
+		config.Endpoint = euEndpoint
 	}
 
 	c := &client{
@@ -89,10 +99,35 @@ func NewWithConfig(writeKey string, config Config) (cli Client, err error) {
 		http:     makeHttpClient(config.Transport),
 	}
 
+	c.warnOnRegionMismatch()
+
 	go c.loop()
 
 	cli = c
 	return
+}
+
+// Matches the prefix of the new API keys, e.g. sk_us_... or pk_eu_...
+var prefixedKey = regexp.MustCompile(`^(pk|sk)_(us|eu)_`)
+
+// Returns the data center ("us" or "eu") of a prefixed API key, or an empty
+// string for a legacy write key.
+func keyDataCenter(key string) string {
+	if m := prefixedKey.FindStringSubmatch(key); m != nil {
+		return m[2]
+	}
+	return ""
+}
+
+// Explicit endpoints still win so proxies keep working, but sending a key to
+// the other region's Customer.io host gets a 200 while every event is dropped,
+// so it is worth a loud log line.
+func (c *client) warnOnRegionMismatch() {
+	endpoint := strings.TrimRight(c.Endpoint, "/")
+	dc := keyDataCenter(c.key)
+	if (dc == "eu" && endpoint == DefaultEndpoint) || (dc == "us" && endpoint == euEndpoint) {
+		c.errorf("warning - endpoint %s is not in the %s region of the API key, events will be dropped", c.Endpoint, dc)
+	}
 }
 
 func makeHttpClient(transport http.RoundTripper) http.Client {
@@ -292,7 +327,11 @@ func (c *client) upload(b []byte) error {
 	req.Header.Add("User-Agent", "analytics-go (version: "+Version+")")
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Content-Length", strconv.Itoa(len(b)))
-	req.SetBasicAuth(c.key, "")
+	if keyDataCenter(c.key) != "" {
+		req.Header.Set("Authorization", "Bearer "+c.key)
+	} else {
+		req.SetBasicAuth(c.key, "")
+	}
 
 	res, err := c.http.Do(req)
 
