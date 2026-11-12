@@ -65,3 +65,7 @@ The links below contain more detailed documentation on how to use this library:
 * [Documentation](https://customer.io/docs/cdp/sources/connections/servers/go/)
 * [Specs](https://customer.io/docs/cdp/sources/source-spec/source-events/)
 * [godoc](https://pkg.go.dev/github.com/customerio/cdp-analytics-go)
+
+## Support
+
+For help or to report a bug, [contact Customer.io Support](https://fly.customer.io/?support=true). We don't track issues in this repository.
