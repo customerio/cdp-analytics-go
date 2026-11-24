@@ -38,7 +38,7 @@ jobs:
             {
               "text": "CDP Analytics Go SDK ${{ github.ref_name }} released",
               "username": "Go SDK release bot",
-              "channel": "#mobile-deployments",
+              "channel": "#server-sdk-deployments",
               "blocks": [
                 {
                   "type": "section",
@@ -106,7 +106,7 @@ jobs:
             {
               "text": "CDP Analytics Go SDK ${{ steps.target.outputs.version }} is missing from the Go proxy",
               "username": "Go SDK release bot",
-              "channel": "#mobile-deployments",
+              "channel": "#server-sdk-deployments",
               "blocks": [
                 {
                   "type": "section",
