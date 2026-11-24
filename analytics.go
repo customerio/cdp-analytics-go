@@ -232,7 +232,7 @@ func (c *client) Enqueue(msg Message) (err error) {
 
 	var m message
 	if m, err = makeMessage(msg, maxMessageBytes); err != nil {
-		c.errorf("%s - %v", err, msg)
+		c.errorf("%s - type=%s", err, fmt.Sprintf("%T", msg))
 		return
 	}
 

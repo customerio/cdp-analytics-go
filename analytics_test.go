@@ -647,12 +647,11 @@ func TestClientEnqueueRejectsUnsendableMessage(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			var calls int32
-			var logged int32
+			logs := make(chan string, 10)
 
 			client, _ := NewWithConfig("0123456789", Config{
 				Logger: testLogger{t.Logf, func(format string, args ...interface{}) {
-					atomic.AddInt32(&logged, 1)
-					t.Logf(format, args...)
+					logs <- fmt.Sprintf(format, args...)
 				}},
 				Callback: testCallback{
 					func(m Message) { atomic.AddInt32(&calls, 1) },
@@ -670,8 +669,12 @@ func TestClientEnqueueRejectsUnsendableMessage(t *testing.T) {
 			if n := atomic.LoadInt32(&calls); n != 0 {
 				t.Errorf("callback called %d times for a rejected message", n)
 			}
-			if n := atomic.LoadInt32(&logged); n != 1 {
-				t.Errorf("rejected message logged %d times, want 1", n)
+			// Only the error and type are logged, never the message's user data.
+			if n := len(logs); n != 1 {
+				t.Fatalf("rejected message logged %d times, want 1", n)
+			}
+			if line, want := <-logs, fmt.Sprintf("%s - type=analytics.Track", err); line != want {
+				t.Errorf("invalid log line: %q, want %q", line, want)
 			}
 		})
 	}
