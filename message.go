@@ -22,7 +22,8 @@ type Callback interface {
 	Success(Message)
 
 	// This method is called for every message that failed to be sent to the
-	// API and will be discarded by the client.
+	// API and will be discarded by the client. Messages rejected by Enqueue are
+	// reported through its returned error instead.
 	Failure(Message, error)
 }
 

@@ -37,7 +37,9 @@ type Client interface {
 	//
 	// The method returns an error if the message queue not be queued, which
 	// happens if the client was already closed at the time the method was
-	// called or if the message was malformed.
+	// called, if the message was malformed or could not be serialized to JSON,
+	// or if it exceeds the maximum message size (ErrMessageTooBig). Messages
+	// rejected this way are not passed to Callback.Failure.
 	Enqueue(Message) error
 }
 
@@ -48,7 +50,7 @@ type client struct {
 	// This channel is where the `Enqueue` method writes messages so they can be
 	// picked up and pushed by the backend goroutine taking care of applying the
 	// batching rules.
-	msgs chan Message
+	msgs chan message
 
 	// These two channels are used to synchronize the client shutting down when
 	// `Close` is called.
@@ -93,7 +95,7 @@ func NewWithConfig(writeKey string, config Config) (cli Client, err error) {
 	c := &client{
 		Config:   makeConfig(config),
 		key:      writeKey,
-		msgs:     make(chan Message, 100),
+		msgs:     make(chan message, 100),
 		quit:     make(chan struct{}),
 		shutdown: make(chan struct{}),
 		http:     makeHttpClient(config.Transport),
@@ -228,6 +230,12 @@ func (c *client) Enqueue(msg Message) (err error) {
 		return
 	}
 
+	var m message
+	if m, err = makeMessage(msg, maxMessageBytes); err != nil {
+		c.errorf("%s - type=%s", err, fmt.Sprintf("%T", msg))
+		return
+	}
+
 	defer func() {
 		// When the `msgs` channel is closed writing to it will trigger a panic.
 		// To avoid letting the panic propagate to the caller we recover from it
@@ -238,7 +246,7 @@ func (c *client) Enqueue(msg Message) (err error) {
 		}
 	}()
 
-	c.msgs <- msg
+	c.msgs <- m
 	return
 }
 
@@ -405,17 +413,8 @@ func (c *client) loop() {
 	}
 }
 
-func (c *client) push(q *messageQueue, m Message, wg *sync.WaitGroup, ex *executor) {
-	var msg message
-	var err error
-
-	if msg, err = makeMessage(m, maxMessageBytes); err != nil {
-		c.errorf("%s - %v", err, m)
-		c.notifyFailure([]message{{m, nil}}, err)
-		return
-	}
-
-	c.debugf("buffer (%d/%d) %v", len(q.pending), c.BatchSize, m)
+func (c *client) push(q *messageQueue, msg message, wg *sync.WaitGroup, ex *executor) {
+	c.debugf("buffer (%d/%d) %v", len(q.pending), c.BatchSize, msg.msg)
 
 	if msgs := q.push(msg); msgs != nil {
 		c.debugf("exceeded messages batch limit with batch of %d messages – flushing", len(msgs))

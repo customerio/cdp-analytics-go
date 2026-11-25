@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -624,32 +625,58 @@ func TestClientCallback(t *testing.T) {
 	}
 }
 
-func TestClientMarshalMessageError(t *testing.T) {
-	errchan := make(chan error, 1)
-
-	client, _ := NewWithConfig("0123456789", Config{
-		Logger: testLogger{t.Logf, t.Logf},
-		Callback: testCallback{
-			nil,
-			func(m Message, e error) { errchan <- e },
+func TestClientEnqueueRejectsUnsendableMessage(t *testing.T) {
+	tests := map[string]struct {
+		msg      Message
+		checkErr func(error) bool
+	}{
+		"unserializable": {
+			// Functions cannot be serialized, this breaks the JSON marshaling.
+			msg: Track{UserId: "A", Event: "B", Properties: Properties{"invalid": func() {}}},
+			checkErr: func(err error) bool {
+				_, ok := err.(*json.UnsupportedTypeError)
+				return ok
+			},
 		},
-		Transport: testTransportOK,
-	})
+		"too big": {
+			msg:      Track{UserId: "A", Event: "B", Properties: Properties{"big": strings.Repeat("x", maxMessageBytes)}},
+			checkErr: func(err error) bool { return err == ErrMessageTooBig },
+		},
+	}
 
-	// Functions cannot be serializable, this should break the JSON marshaling
-	// and trigger the failure callback.
-	client.Enqueue(Track{
-		UserId:     "A",
-		Event:      "B",
-		Properties: Properties{"invalid": func() {}},
-	})
-	client.Close()
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			var calls int32
+			logs := make(chan string, 10)
 
-	if err := <-errchan; err == nil {
-		t.Error("failure callback not triggered for unserializable message")
+			client, _ := NewWithConfig("0123456789", Config{
+				Logger: testLogger{t.Logf, func(format string, args ...interface{}) {
+					logs <- fmt.Sprintf(format, args...)
+				}},
+				Callback: testCallback{
+					func(m Message) { atomic.AddInt32(&calls, 1) },
+					func(m Message, e error) { atomic.AddInt32(&calls, 1) },
+				},
+				Transport: testTransportOK,
+			})
 
-	} else if _, ok := err.(*json.UnsupportedTypeError); !ok {
-		t.Errorf("invalid error type returned by unserializable message: %T", err)
+			err := client.Enqueue(test.msg)
+			client.Close()
+
+			if !test.checkErr(err) {
+				t.Errorf("invalid error returned by Enqueue: %T %v", err, err)
+			}
+			if n := atomic.LoadInt32(&calls); n != 0 {
+				t.Errorf("callback called %d times for a rejected message", n)
+			}
+			// Only the error and type are logged, never the message's user data.
+			if n := len(logs); n != 1 {
+				t.Fatalf("rejected message logged %d times, want 1", n)
+			}
+			if line, want := <-logs, fmt.Sprintf("%s - type=analytics.Track", err); line != want {
+				t.Errorf("invalid log line: %q, want %q", line, want)
+			}
+		})
 	}
 }
 

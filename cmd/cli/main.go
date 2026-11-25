@@ -35,34 +35,38 @@ func main() {
 
 	switch config.Type {
 	case "track":
-		client.Enqueue(analytics.Track{
+		err = client.Enqueue(analytics.Track{
 			UserId:     config.UserID,
 			Event:      config.Event,
 			Properties: parseJSON(config.Properties),
 		})
 	case "identify":
-		client.Enqueue(analytics.Identify{
+		err = client.Enqueue(analytics.Identify{
 			UserId: config.UserID,
 			Traits: parseJSON(config.Traits),
 		})
 	case "group":
-		client.Enqueue(analytics.Group{
+		err = client.Enqueue(analytics.Group{
 			UserId:  config.UserID,
 			GroupId: config.GroupID,
 			Traits:  parseJSON(config.Traits),
 		})
 	case "page":
-		client.Enqueue(analytics.Page{
+		err = client.Enqueue(analytics.Page{
 			UserId:     config.UserID,
 			Name:       config.Name,
 			Properties: parseJSON(config.Properties),
 		})
 	case "screen":
-		client.Enqueue(analytics.Screen{
+		err = client.Enqueue(analytics.Screen{
 			UserId:     config.UserID,
 			Name:       config.Name,
 			Properties: parseJSON(config.Properties),
 		})
+	}
+	if err != nil {
+		fmt.Println("could not enqueue message:", err)
+		os.Exit(1)
 	}
 
 	if err := <-callback; err != nil {
